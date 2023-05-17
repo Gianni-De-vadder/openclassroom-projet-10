@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     "accounts",
     "api",
     "rest_framework",
-    'rest_framework_simplejwt',
+    "rest_framework_simplejwt",
 ]
 
 MIDDLEWARE = [
@@ -72,15 +72,15 @@ TEMPLATES = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
 }
 
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-APPEND_SLASH = False
+APPEND_SLASH = True
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
