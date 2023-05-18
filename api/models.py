@@ -2,9 +2,17 @@ from django.db import models
 from accounts.models import User
 
 
+from django.db import models
+from accounts.models import User
+
+
 class Contributors(models.Model):
-    user_id = models.IntegerField()
-    project_id = models.IntegerField()
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="contributions"
+    )
+    project = models.ForeignKey(
+        "Projects", on_delete=models.CASCADE, related_name="project_contributors"
+    )
     permission = models.IntegerField()
     role = models.CharField(max_length=255)
 
@@ -14,10 +22,12 @@ class Contributors(models.Model):
 class Projects(models.Model):
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
-    project_id = models.IntegerField()
     type = models.CharField(max_length=255)
     author_user_id = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="projects"
+    )
+    contributors = models.ManyToManyField(
+        User, through="Contributors", related_name="contributed_projects"
     )
 
     objects = models.Manager()
