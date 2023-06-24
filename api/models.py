@@ -13,17 +13,25 @@ class Contributors(models.Model):
     project = models.ForeignKey(
         "Projects", on_delete=models.CASCADE, related_name="project_contributors"
     )
-    permission = models.IntegerField()
+    permission = models.CharField(max_length=10, blank=True)
     role = models.CharField(max_length=255)
 
     objects = models.Manager()
 
 
+class ProjectType(models.TextChoices):
+    FEATURE = "Feature", "Feature"
+    BUG = "Bug", "Bug"
+    ENHANCEMENT = "Enhancement", "Enhancement"
+    TASK = "Task", "Task"
+    OTHER = "Other", "Other"
+
+
 class Projects(models.Model):
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
-    type = models.CharField(max_length=255)
-    author_user_id = models.ForeignKey(
+    type = models.CharField(max_length=255, choices=ProjectType.choices)
+    author_user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="projects"
     )
     contributors = models.ManyToManyField(
@@ -33,13 +41,19 @@ class Projects(models.Model):
     objects = models.Manager()
 
 
+class Priority(models.TextChoices):
+    Low = "LOW", "Faible"
+    Medium = "MED", "Moyen"
+    High = "HIGH", "Haute"
+
+
 class Issues(models.Model):
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     tag = models.CharField(max_length=255)
-    priority = models.CharField(max_length=255)
+    priority = models.CharField(max_length=255, choices=Priority.choices)
     status = models.CharField(max_length=255)
-    author_user_id = models.ForeignKey(
+    author_user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="issues"
     )
     assignee_user_id = models.ForeignKey(

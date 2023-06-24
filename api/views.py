@@ -1,6 +1,6 @@
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.response import Response
+from rest_framework import viewsets, permissions
 from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework import status
 from .serializers import (
     ContributorSerializer,
@@ -10,12 +10,10 @@ from .serializers import (
 )
 from .models import Contributors, Projects, Comments, Issues
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework import viewsets, permissions
 from .permissions import IsProjectContributor, IsIssueAuthor, IsCommentAuthor
-from api.permissions import IsContributorOrReadOnly
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import SignupSerializer, LoginSerializer
-
+from rest_framework.viewsets import ModelViewSet
 
 
 class LoginView(APIView):
@@ -65,13 +63,20 @@ class ProjectViewSet(ModelViewSet):
 
     queryset = Projects.objects.all()
     serializer_class = ProjectSerializer
-    permission_classes = [IsContributorOrReadOnly]
+    permission_classes = [IsProjectContributor]
 
-    def get_permissions(self):
-        if self.action in ["retrieve", "update", "partial_update", "destroy"]:
-            self.permission_classes = [IsProjectContributor]
-        return super().get_permissions()
+    def perform_create(self, serializer):
+        project = serializer.save(author_user=self.request.user)
+        Contributors.objects.create(
+            project=project, user=self.request.user, role="Author"
+        )
 
+    def get_queryset(self):
+        if self.action == "list":
+            # Filtrer le queryset pour les contributeurs
+            return self.request.user.contributed_projects.all()
+        else:
+            return Projects.objects.all()
 
 
 class IssueViewSet(ModelViewSet):
@@ -98,3 +103,110 @@ class CommentViewSet(ModelViewSet):
     queryset = Comments.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated, IsCommentAuthor]
+
+
+class AddUserToProjectView(APIView):
+    def post(self, request, project_id):
+        project = Projects.objects.get(id=project_id)
+        contributor_data = request.data
+        contributor_data["project"] = project.id
+        serializer = ContributorSerializer(data=contributor_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UsersInProjectView(APIView):
+    def get(self, request, project_id):
+        project = Projects.objects.get(id=project_id)
+        contributors = Contributors.objects.filter(project=project)
+        serializer = ContributorSerializer(contributors, many=True)
+        return Response(serializer.data)
+
+
+class RemoveUserFromProjectView(APIView):
+    def delete(self, request, project_id, user_id):
+        project = Projects.objects.get(id=project_id)
+        contributor = Contributors.objects.get(project=project, user=user_id)
+        contributor.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class IssuesInProjectView(APIView):
+    def get(self, request, project_id):
+        project = Projects.objects.get(id=project_id)
+        issues = Issues.objects.filter(project=project)
+        serializer = IssueSerializer(issues, many=True)
+        return Response(serializer.data)
+
+
+class UpdateIssueInProjectView(APIView):
+    def put(self, request, project_id, issue_id):
+        project = Projects.objects.get(id=project_id)
+        issue = Issues.objects.get(id=issue_id, project=project)
+        serializer = IssueSerializer(issue, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteIssueFromProjectView(APIView):
+    def delete(self, request, project_id, issue_id):
+        project = Projects.objects.get(id=project_id)
+        issue = Issues.objects.get(id=issue_id, project=project)
+        issue.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CreateCommentInIssueView(APIView):
+    def post(self, request, project_id, issue_id):
+        project = Projects.objects.get(id=project_id)
+        issue = Issues.objects.get(id=issue_id, project=project)
+        comment_data = request.data
+        comment_data["issue"] = issue.id
+        serializer = CommentSerializer(data=comment_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CommentsInIssueView(APIView):
+    def get(self, request, project_id, issue_id):
+        project = Projects.objects.get(id=project_id)
+        issue = Issues.objects.get(id=issue_id, project=project)
+        comments = Comments.objects.filter(issue=issue)
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+
+
+class UpdateCommentView(APIView):
+    def put(self, request, project_id, issue_id, comment_id):
+        project = Projects.objects.get(id=project_id)
+        issue = Issues.objects.get(id=issue_id, project=project)
+        comment = Comments.objects.get(id=comment_id, issue=issue)
+        serializer = CommentSerializer(comment, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteCommentView(APIView):
+    def delete(self, request, project_id, issue_id, comment_id):
+        project = Projects.objects.get(id=project_id)
+        issue = Issues.objects.get(id=issue_id, project=project)
+        comment = Comments.objects.get(id=comment_id, issue=issue)
+        comment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CommentDetailView(APIView):
+    def get(self, request, project_id, issue_id, comment_id):
+        project = Projects.objects.get(id=project_id)
+        issue = Issues.objects.get(id=issue_id, project=project)
+        comment = Comments.objects.get(id=comment_id, issue=issue)
+        serializer = CommentSerializer(comment)
+        return Response(serializer.data)

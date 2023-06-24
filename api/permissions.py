@@ -5,9 +5,11 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 # This is a custom permission class in Python that checks if the user making the request is a
 # contributor to a specific project object.
 class IsProjectContributor(BasePermission):
+    message = "You have to be a contributor of this project, or the creator."
+
     def has_object_permission(self, request, view, obj):
         # Vérifier si l'utilisateur est le créateur du projet
-        if obj.author_user_id == request.user:
+        if obj.author_user == request.user:
             return True
 
         # Vérifier si l'utilisateur est un contributeur du projet

@@ -50,6 +50,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Projects
         fields = "__all__"
+        read_only_fields = ["contributors", "author_user"]
 
 
 class IssueSerializer(serializers.ModelSerializer):
