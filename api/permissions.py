@@ -26,7 +26,7 @@ class IsContributorOrReadOnly(BasePermission):
 # This class checks if the requesting user is the author of the object being accessed.
 class IsIssueAuthor(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        return obj.author == request.user
+        return obj.author_user == request.user
 
 
 # This class checks if the requesting user is the author of a comment object.

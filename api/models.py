@@ -65,9 +65,9 @@ class Issues(models.Model):
 
 
 class Comments(models.Model):
-    comment_id = models.IntegerField()
+    comment_id = models.AutoField(primary_key=True)
     description = models.CharField(max_length=255)
-    author_user_id = models.ForeignKey(
+    author_user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="comments"
     )
     issue_id = models.ForeignKey(

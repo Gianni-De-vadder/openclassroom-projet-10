@@ -14,6 +14,9 @@ from .permissions import IsProjectContributor, IsIssueAuthor, IsCommentAuthor
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import SignupSerializer, LoginSerializer
 from rest_framework.viewsets import ModelViewSet
+from datetime import datetime
+from django.utils import timezone
+from django.utils.timezone import make_aware
 
 
 class LoginView(APIView):
@@ -91,6 +94,21 @@ class IssueViewSet(ModelViewSet):
     serializer_class = IssueSerializer
     permission_classes = [permissions.IsAuthenticated, IsIssueAuthor]
 
+    def perform_create(self, serializer):
+        # Récupérer l'utilisateur connecté comme auteur de l'issue
+        author_user = self.request.user
+
+        # Remplir automatiquement les champs requis de l'issue
+        created_time = make_aware(datetime.now())  # Date et heure actuelles du serveur
+
+        # Ajouter les valeurs aux données de l'issue
+        issue_data = serializer.validated_data
+        issue_data["created_time"] = created_time
+        issue_data["author_user"] = author_user
+
+        # Enregistrer l'issue dans la base de données
+        serializer.save()
+
 
 class CommentViewSet(ModelViewSet):
     """
@@ -104,11 +122,29 @@ class CommentViewSet(ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated, IsCommentAuthor]
 
+    def perform_create(self, serializer):
+        serializer.save(
+            created_time=timezone.now(),  # Remplissage automatique de la date et l'heure actuelles
+            author_user_id=self.request.user.id,  # Remplissage automatique de l'ID de l'utilisateur connecté
+        )
+
 
 class AddUserToProjectView(APIView):
     def post(self, request, project_id):
         project = Projects.objects.get(id=project_id)
-        contributor_data = request.data
+
+        # Vérifier si l'utilisateur est l'auteur du projet
+        if project.author_user != request.user:
+            return Response(
+                {
+                    "message": "Vous n'êtes pas autorisé à ajouter des contributeurs à ce projet."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        contributor_data = (
+            request.data.copy()
+        )  # Créer une copie mutable de la QueryDict
         contributor_data["project"] = project.id
         serializer = ContributorSerializer(data=contributor_data)
         if serializer.is_valid():
@@ -130,7 +166,10 @@ class RemoveUserFromProjectView(APIView):
         project = Projects.objects.get(id=project_id)
         contributor = Contributors.objects.get(project=project, user=user_id)
         contributor.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"message": "Utilisateur supprimé du projet avec succès."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
 
 
 class IssuesInProjectView(APIView):
@@ -162,10 +201,20 @@ class DeleteIssueFromProjectView(APIView):
 
 class CreateCommentInIssueView(APIView):
     def post(self, request, project_id, issue_id):
-        project = Projects.objects.get(id=project_id)
-        issue = Issues.objects.get(id=issue_id, project=project)
-        comment_data = request.data
-        comment_data["issue"] = issue.id
+        try:
+            issue = Issues.objects.get(id=issue_id, project__id=project_id)
+        except Issues.DoesNotExist:
+            return Response(
+                {"error": "Issue not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        comment_data = {
+            "description": request.data.get("description"),
+            "author_user": request.user.id,
+            "issue_id": issue.id,
+            "created_time": timezone.now(),
+        }
+
         serializer = CommentSerializer(data=comment_data)
         if serializer.is_valid():
             serializer.save()

@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from api.models import Contributors, Projects, Issues, Comments
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -54,6 +55,11 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 
 class IssueSerializer(serializers.ModelSerializer):
+    created_time = serializers.DateTimeField(default=timezone.now)
+    author_user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), default=serializers.CurrentUserDefault()
+    )
+
     class Meta:
         model = Issues
         fields = "__all__"
@@ -62,4 +68,5 @@ class IssueSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comments
-        fields = "__all__"
+        read_only_fields = ("created_time", "author_user")
+        exclude = ["issue_id"]
