@@ -123,9 +123,27 @@ class CommentViewSet(ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsCommentAuthor]
 
     def perform_create(self, serializer):
-        serializer.save(
-            created_time=timezone.now(),  # Remplissage automatique de la date et l'heure actuelles
-            author_user_id=self.request.user.id,  # Remplissage automatique de l'ID de l'utilisateur connecté
+        # Récupérer l'utilisateur connecté comme auteur du commentaire
+        author_user = self.request.user
+
+        # Remplir automatiquement les champs requis du commentaire
+        created_time = timezone.now()
+
+        # Ajouter les valeurs aux données du commentaire
+        comment_data = serializer.validated_data
+        comment_data["author_user"] = author_user
+        comment_data["created_time"] = created_time
+
+        # Enregistrer le commentaire dans la base de données
+        serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
         )
 
 
@@ -200,22 +218,16 @@ class DeleteIssueFromProjectView(APIView):
 
 
 class CreateCommentInIssueView(APIView):
-    def post(self, request, project_id, issue_id):
-        try:
-            issue = Issues.objects.get(id=issue_id, project__id=project_id)
-        except Issues.DoesNotExist:
-            return Response(
-                {"error": "Issue not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
+    def post(self, request, project_id, issue):
+        project = Projects.objects.get(id=project_id)
         comment_data = {
             "description": request.data.get("description"),
             "author_user": request.user.id,
-            "issue_id": issue.id,
-            "created_time": timezone.now(),
+            "issue": issue,  # Utilisez directement issue_id
         }
-
-        serializer = CommentSerializer(data=comment_data)
+        serializer = CommentSerializer(
+            data=comment_data, context=self.get_serializer_context()
+        )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)

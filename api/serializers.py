@@ -66,7 +66,9 @@ class IssueSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    author_user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    created_time = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = Comments
-        read_only_fields = ("created_time", "author_user")
-        exclude = ["issue_id"]
+        read_only_fields = ("created_time", "author_user", "issue")

@@ -70,9 +70,7 @@ class Comments(models.Model):
     author_user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="comments"
     )
-    issue_id = models.ForeignKey(
-        Issues, on_delete=models.CASCADE, related_name="comments"
-    )
+    issue = models.ForeignKey(Issues, on_delete=models.CASCADE, related_name="comments")
     created_time = models.DateTimeField()
 
     objects = models.Manager()
