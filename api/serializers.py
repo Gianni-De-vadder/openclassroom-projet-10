@@ -59,10 +59,13 @@ class IssueSerializer(serializers.ModelSerializer):
     author_user = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), default=serializers.CurrentUserDefault()
     )
+    project_id = serializers.PrimaryKeyRelatedField(read_only=True)
+
 
     class Meta:
         model = Issues
         fields = "__all__"
+        read_only_fields = ("project_id",)
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -71,4 +74,5 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comments
+        fields = '__all__'
         read_only_fields = ("created_time", "author_user", "issue")

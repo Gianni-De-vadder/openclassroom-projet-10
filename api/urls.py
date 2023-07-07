@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
@@ -9,24 +9,21 @@ from .views import (
     SignupView,
     LoginView,
 )
-
-
-# Création du routeur
 from rest_framework_nested import routers
 
 # Création du routeur principal
-router = routers.DefaultRouter()
-
-# Enregistrement de la vue pour la gestion des projets
+router = DefaultRouter()
 router.register(r"projects", ProjectViewSet, basename="projects")
 
 # Création du routeur pour les problèmes liés à un projet
-project_router = routers.NestedDefaultRouter(router, r"projects", lookup="project")
-project_router.register(r"issues", IssueViewSet, basename="issues")
+project_router = routers.NestedSimpleRouter(router, r"projects", lookup="project")
+project_router.register(r"issues", IssueViewSet, basename="project-issues")
 
 # Création du routeur pour les commentaires liés à un problème
-issue_router = routers.NestedDefaultRouter(project_router, r"issues", lookup="issue")
-issue_router.register(r"comments", CommentViewSet, basename="comments")
+comment_router = routers.NestedSimpleRouter(
+    project_router, r"issues", lookup="issue"
+)
+comment_router.register(r"comments", CommentViewSet, basename="issue-comments")
 
 urlpatterns = [
     # URLs pour l'authentification JWT
@@ -39,5 +36,5 @@ urlpatterns = [
     # URLs pour les problèmes liés à un projet
     path("", include(project_router.urls)),
     # URLs pour les commentaires liés à un problème
-    path("", include(issue_router.urls)),
+    path("", include(comment_router.urls)),
 ]

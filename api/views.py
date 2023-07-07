@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -97,7 +98,8 @@ class IssueViewSet(ModelViewSet):
     def perform_create(self, serializer):
         # Récupérer l'utilisateur connecté comme auteur de l'issue
         author_user = self.request.user
-
+        project_id = self.kwargs.get("project_id")
+        print(project_id)
         # Remplir automatiquement les champs requis de l'issue
         created_time = make_aware(datetime.now())  # Date et heure actuelles du serveur
 
@@ -105,6 +107,7 @@ class IssueViewSet(ModelViewSet):
         issue_data = serializer.validated_data
         issue_data["created_time"] = created_time
         issue_data["author_user"] = author_user
+        issue_data["project"] = project_id
 
         # Enregistrer l'issue dans la base de données
         serializer.save()
@@ -126,12 +129,17 @@ class CommentViewSet(ModelViewSet):
         # Récupérer l'utilisateur connecté comme auteur du commentaire
         author_user = self.request.user
 
+        # Récupérer l'issue associée au commentaire en utilisant l'issue_id des paramètres d'URL
+        issue_id = self.kwargs.get('issue_id')
+        issue = get_object_or_404(Issues, pk=issue_id)
+
         # Remplir automatiquement les champs requis du commentaire
         created_time = timezone.now()
 
         # Ajouter les valeurs aux données du commentaire
         comment_data = serializer.validated_data
         comment_data["author_user"] = author_user
+        comment_data["issue"] = issue
         comment_data["created_time"] = created_time
 
         # Enregistrer le commentaire dans la base de données

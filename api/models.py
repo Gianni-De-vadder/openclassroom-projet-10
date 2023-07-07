@@ -61,7 +61,12 @@ class Issues(models.Model):
     )
     created_time = models.DateTimeField()
 
+    project_id = models.ForeignKey(
+        Projects, on_delete=models.CASCADE, related_name="issues",
+    )
+
     objects = models.Manager()
+
 
 
 class Comments(models.Model):
